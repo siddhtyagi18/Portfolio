@@ -10,22 +10,25 @@ export async function POST(request: Request) {
 
     const googleScriptUrl = process.env.GOOGLE_SCRIPT_URL;
 
+    // Try Google Sheets first (optional)
     if (googleScriptUrl) {
-      // Send to Google Sheet via Apps Script Web App
-      const response = await fetch(googleScriptUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, message, timestamp: new Date().toISOString() })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save to Google Sheets');
+      try {
+        const response = await fetch(googleScriptUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, message, timestamp: new Date().toISOString() })
+        });
+        
+        if (response.ok) {
+          return NextResponse.json({ ok: true });
+        }
+      } catch (googleError) {
+        // Google Sheets failed, continue to fallback
+        console.error('Google Sheets error:', googleError);
       }
-
-      return NextResponse.json({ ok: true });
     }
 
-    // Fallback to local CSV if no Google Script URL is provided
+    // Always save to local CSV as fallback
     const dataDir = path.join(process.cwd(), 'data')
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir)
     const filePath = path.join(dataDir, 'contacts.csv')
@@ -39,6 +42,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true })
   } catch (err) {
+    console.error('Contact API error:', err);
     return NextResponse.json({ ok: false, error: String(err) }, { status: 500 })
   }
 }
