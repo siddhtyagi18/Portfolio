@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server'
-import fs from 'fs'
-import path from 'path'
 
 export async function POST(request: Request) {
   try {
@@ -10,7 +8,6 @@ export async function POST(request: Request) {
 
     const googleScriptUrl = process.env.GOOGLE_SCRIPT_URL;
 
-    // Try Google Sheets first (optional)
     if (googleScriptUrl) {
       try {
         const response = await fetch(googleScriptUrl, {
@@ -23,23 +20,11 @@ export async function POST(request: Request) {
           return NextResponse.json({ ok: true });
         }
       } catch (googleError) {
-        // Google Sheets failed, continue to fallback
         console.error('Google Sheets error:', googleError);
       }
     }
 
-    // Always save to local CSV as fallback
-    const dataDir = path.join(process.cwd(), 'data')
-    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir)
-    const filePath = path.join(dataDir, 'contacts.csv')
-
-    const exists = fs.existsSync(filePath)
-    const header = 'timestamp,name,email,message\n'
-    const line = `${new Date().toISOString()},"${name.replace(/"/g, '""')}","${email.replace(/"/g, '""')}","${(message||'').replace(/"/g, '""')}"\n`
-
-    if (!exists) fs.writeFileSync(filePath, header + line)
-    else fs.appendFileSync(filePath, line)
-
+    // If Google Sheets isn't set up or fails, still return success to user
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('Contact API error:', err);
