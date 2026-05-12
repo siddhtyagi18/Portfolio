@@ -6,28 +6,30 @@ export async function POST(request: Request) {
     const { name, email, message } = body
     if (!name || !email) return NextResponse.json({ ok: false, error: 'Missing fields' }, { status: 400 })
 
-    const googleScriptUrl = process.env.GOOGLE_SCRIPT_URL;
+    const formspreeUrl = 'https://formspree.io/f/mjglllpw'
 
-    if (googleScriptUrl) {
-      try {
-        const response = await fetch(googleScriptUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, message, timestamp: new Date().toISOString() })
-        });
-        
-        if (response.ok) {
-          return NextResponse.json({ ok: true });
-        }
-      } catch (googleError) {
-        console.error('Google Sheets error:', googleError);
+    const formData = new FormData()
+    formData.append('name', name)
+    formData.append('email', email)
+    formData.append('message', message || '')
+
+    const response = await fetch(formspreeUrl, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'Accept': 'application/json'
       }
-    }
+    })
 
-    // If Google Sheets isn't set up or fails, still return success to user
-    return NextResponse.json({ ok: true })
+    if (response.ok) {
+      return NextResponse.json({ ok: true })
+    } else {
+      const result = await response.json()
+      console.error('Formspree error:', result)
+      return NextResponse.json({ ok: false, error: 'Failed to send message' }, { status: 500 })
+    }
   } catch (err) {
-    console.error('Contact API error:', err);
+    console.error('Contact API error:', err)
     return NextResponse.json({ ok: false, error: String(err) }, { status: 500 })
   }
 }
